@@ -6,6 +6,7 @@ package ai.onnxruntime;
 
 import ai.onnxruntime.OrtSession.SessionOptions;
 import ai.onnxruntime.OrtTrainingSession.OrtCheckpointState;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -424,6 +425,27 @@ public final class OrtEnvironment implements AutoCloseable {
    */
   public String getVersion() {
     return OnnxRuntime.version();
+  }
+
+  /**
+   * Requests the extraction and loading of a native library from the classpath.
+   *
+   * @param prefix The prefix of the environment variables to respect (see {@link ai.onnxruntime})
+   *     (only applies if {@code load} is {@code true})
+   * @param resourceDir The resource directory on the classpath
+   * @param library The name of the native library
+   * @param load Whether to also call {@link System#load(String)}
+   * @throws IOException If the library cannot be extracted or loaded
+   */
+  public synchronized void requestLibraryExtraction(
+      String prefix, String resourceDir, String library, boolean load) throws IOException {
+    if (load) {
+      OnnxRuntime.load(prefix, resourceDir, library);
+    } else {
+      if (!OnnxRuntime.extractFromResources(resourceDir, library).isPresent()) {
+        throw new FileNotFoundException("Did not find " + library + " in " + resourceDir);
+      }
+    }
   }
 
   @Override
