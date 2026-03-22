@@ -54,12 +54,6 @@ final class OnnxRuntime {
    */
   static final String ONNXRUNTIME_NATIVE_PATH = "onnxruntime.native.path";
 
-  /** The short name of the ONNX runtime shared library */
-  static final String ONNXRUNTIME_LIBRARY_NAME = "onnxruntime";
-
-  /** The short name of the ONNX runtime JNI shared library */
-  static final String ONNXRUNTIME_JNI_LIBRARY_NAME = "onnxruntime4j_jni";
-
   /** The short name of the ONNX runtime shared provider library */
   static final String ONNXRUNTIME_LIBRARY_SHARED_NAME = "onnxruntime_providers_shared";
 
@@ -184,10 +178,7 @@ final class OnnxRuntime {
       extractProviderLibrary(ONNXRUNTIME_LIBRARY_WEBGPU_DXC_DXIL_NAME);
       extractProviderLibrary(ONNXRUNTIME_LIBRARY_WEBGPU_DXC_DXCOMPILER_NAME);
 
-      if (!isAndroid()) {
-        load(ONNXRUNTIME_LIBRARY_NAME);
-      }
-      load(ONNXRUNTIME_JNI_LIBRARY_NAME);
+      OnnxExtractor.run();
 
       ortApiHandle = initialiseAPIBase(ORT_API_VERSION_23);
       if (ortApiHandle == 0L) {
@@ -317,7 +308,7 @@ final class OnnxRuntime {
       }
     }
     // Otherwise extract the file from the classpath resources.
-    Optional<File> file = extractFromResources(libraryName);
+    Optional<File> file = extractFromResources("/ai/onnxruntime/native/", libraryName);
     if (file.isPresent()) {
       extractedSharedProviders.add(libraryName);
       return true;
@@ -344,7 +335,7 @@ final class OnnxRuntime {
    * @param library The bare name of the library.
    * @throws IOException If the file failed to read or write.
    */
-  private static void load(String library) throws IOException {
+  static void load(String prefix, String resourceDir, String library) throws IOException {
     // On Android, we simply use System.loadLibrary
     if (isAndroid()) {
       System.loadLibrary(library);
@@ -352,7 +343,7 @@ final class OnnxRuntime {
     }
 
     // 1) The user may skip loading of this library:
-    String skip = System.getProperty("onnxruntime.native." + library + ".skip");
+    String skip = System.getProperty(prefix + library + ".skip");
     if (Boolean.TRUE.toString().equalsIgnoreCase(skip)) {
       logger.log(Level.FINE, "Skipping load of native library '" + library + "'");
       return;
@@ -381,7 +372,7 @@ final class OnnxRuntime {
     }
 
     // 3) The user may explicitly specify the path to their shared library:
-    String libraryPathProperty = System.getProperty("onnxruntime.native." + library + ".path");
+    String libraryPathProperty = System.getProperty(prefix + library + ".path");
     if (libraryPathProperty != null) {
       logger.log(
           Level.FINE,
@@ -400,7 +391,7 @@ final class OnnxRuntime {
     }
 
     // 4) try loading from resources or library path:
-    Optional<File> extractedPath = extractFromResources(library);
+    Optional<File> extractedPath = extractFromResources(resourceDir, library);
     if (extractedPath.isPresent()) {
       // extracted library from resources
       System.load(extractedPath.get().getAbsolutePath());
@@ -422,9 +413,9 @@ final class OnnxRuntime {
    * @return An optional containing the file if it is successfully extracted, or an empty optional
    *     if it failed to extract or couldn't be found.
    */
-  private static Optional<File> extractFromResources(String library) {
+  static Optional<File> extractFromResources(String resourceDir, String library) {
     String libraryFileName = mapLibraryName(library);
-    String resourcePath = "/ai/onnxruntime/native/" + OS_ARCH_STR + '/' + libraryFileName;
+    String resourcePath = resourceDir + "/" + OS_ARCH_STR + "/" + libraryFileName;
     File tempFile = tempDirectory.resolve(libraryFileName).toFile();
     try (InputStream is = OnnxRuntime.class.getResourceAsStream(resourcePath)) {
       if (is == null) {

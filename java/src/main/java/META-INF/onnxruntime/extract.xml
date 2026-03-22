@@ -1,0 +1,6 @@
+<library name="ONNXRuntime" prefix="onnxruntime.native" directory="/ai/onnxruntime/native/">
+    <files>
+        <file name="onnxruntime" />
+        <file name="onnxruntime4j_jni" />
+    </files>
+</library>
